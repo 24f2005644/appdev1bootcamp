@@ -1,0 +1,59 @@
+
+# User
+# id
+# name
+# email
+# password
+# role (Patient, Admin, Doctor)
+# is_active
+# doctorProfile -> none
+# patient_profilr -> none
+
+
+
+
+# Doctorprofile
+# id
+# department_id
+# phone
+# departmet
+#
+# is_active
+
+# Patientprofile
+# id
+# gender
+# phone
+# address
+# is_active
+
+
+# Department
+# id
+# name
+# description
+
+
+
+# Appointment
+# id
+# doctor id
+# Patient_id
+# appointment-date
+# appointment time
+# status (Booked, completed, cancelled)
+# reason
+
+# Treatment
+# id
+# appointment_id
+# prescription
+# diagnosis
+
+
+# DoctorAvailibility
+# id
+# doctor_id
+# available_date
+# start_time
+# end_time
