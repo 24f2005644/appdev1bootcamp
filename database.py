@@ -31,7 +31,7 @@ class DoctorProfile(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete = "CASCADE"), nullable=False, unique=True)
-    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False)
+    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"))
     specialization = db.Column(db.String(100), nullable=False)
 
 
