@@ -15,6 +15,18 @@
 
     <form method="post">
         <label for ="name">Name <input type="text" name="name" value="{{ doctor.user.name if doctor else '' }}" required></label>
+        <label for ="email">Email <input type="email" name="email" value="{{ doctor.user.email if doctor else '' }}" required></label>
+        <label for ="password">Password <input type="Password" name="password" required></label>
+        <label for ="specialization">Specialization <input type="text" name="specialization" value="{{ doctor.specialization if doctor else '' }}" required></label>
+        <label for ="department">Department
+            <select name="department_id" required>
+                <option value="">Select a department</option>
+                {% for department in departments %}
+                    <option value="{{ department.id }}" {% if doctor and doctor.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">{{"Update" if doctor else "Add"}} Doctor</button>
     </form>
 </body>
 </html>

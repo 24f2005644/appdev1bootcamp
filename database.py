@@ -31,7 +31,7 @@ class DoctorProfile(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete = "CASCADE"), nullable=False, unique=True)
-    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"))
+    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False)
     specialization = db.Column(db.String(100), nullable=False)
 
 
@@ -115,7 +115,7 @@ def create_database(app):
                 password_hash=generate_password_hash("admin123"),
                 role = 'admin'
                 )
-
+        
         db.session.add(admin)
         db.session.commit()
 

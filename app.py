@@ -156,16 +156,21 @@ def add_doctor():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         specialization = request.form.get("specialization", "").strip()
-        department_id = request.form.get("department")
+        department_id = request.form.get("department_id", type=int)
 
 
 
-        if not all([name, email, password, specialization]):
+        if not all([name, email, password, specialization, department_id]):
             flash("All fields are required.", "error")
             return render_template("doctor_form.html", departments=departments)
 
         if User.query.filter_by(email=email).first():
             flash("An account with this email already exists.", "error")
+            return render_template("doctor_form.html", departments=departments)
+
+
+        if Department.query.get(department_id) is None:
+            flash("Selected department does not exist.", "error")
             return render_template("doctor_form.html", departments=departments)
 
         user = User(
@@ -184,6 +189,8 @@ def add_doctor():
         flash("Doctor added successfully.", "success")
         return redirect(url_for("admin_dashboard"))
 
+    return render_template("doctor_form.html", departments=departments)
+
 
 
 @app.route("/admin/doctors/<int:doctor_id>/edit", methods=["GET", "POST"])
@@ -198,11 +205,12 @@ def edit_doctor(doctor_id):
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
         specialization = request.form.get("specialization", "").strip()
-        department_id = request.form.get("department")
+        department_id = request.form.get("department", type=int)
+        password = request.form.get("password", "").strip()
 
         other_user = User.query.filter_by(email = email).first()
 
-        if not all([name, email, specialization]):
+        if not all([name, email, specialization, department_id, password]):
             flash("All fields are required.", "error")
             return render_template("doctor_form.html", doctor=doctor, departments=departments)
 
@@ -215,23 +223,113 @@ def edit_doctor(doctor_id):
         doctor.user.email = email
         doctor.specialization = specialization
         doctor.department_id = department_id
+        doctor.user.password_hash = generate_password_hash(password)
         db.session.commit()
         flash("Doctor profile updated successfully.", "success")
         return redirect(url_for("admin_dashboard"))
     return render_template("doctor_form.html", doctor=doctor, departments=departments)
 
 
+@app.route("/admin/users/<int:user_id>/toggle-active", methods=["POST", "GET"])
+@role_required("admin")
+def toggle_user_active(user_id):
+    user = User.query.get(user_id)
+    if not user or user.role == "admin":  # Prevent deactivating admin users
+        flash("User not found.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    user.is_active = not user.is_active
+    db.session.commit()
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/patients")
+@role_required("admin")
+def search_patients():
+    search_query = request.args.get("q", "").strip()
+    if search_query:
+        patients = PatientProfile.query.join(User).filter(
+            (User.name.ilike(f"%{search_query}%")) | (User.email.ilike(f"%{search_query}%"))
+        ).all()
+    else:
+        patients = PatientProfile.query.all()
+
+    return render_template("admin_patients.html", patients=patients, search_query=search_query)
+
+@app.route("/admin/department/new", methods=["GET", "POST"])
+@role_required("admin")
+def add_department():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+
+        if not name:
+            flash("Department name is required.", "error")
+            return render_template("department_form.html")
+
+        if Department.query.filter_by(name=name).first():
+            flash("A department with this name already exists.", "error")
+            return render_template("department_form.html")
+
+        department = Department(name=name, description=description)
+        db.session.add(department)
+        db.session.commit()
+
+        flash("Department added successfully.", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    return render_template("department_form.html")
+
+
+
+# ==================================Doctor routes========================================
+
+
+@app.route("/doctor/dashboard")
+@role_required("doctor")
+def doctor_dashboard():
+    doctor = doctor_profile()
+
+    appointments = Appointment.query.filter_by(doctor_id=doctor.id).all()
+
+    return render_template("doctor_dashboard.html", doctor=doctor, appointments=appointments, availability = doctor.availability)
+
+@app.route("/doctor/appointments/<int:appointment_id>/status", methods=["GET", "POST"])
+@role_required("doctor")
+def update_appointment_status(appointment_id):
+    doctor = doctor_profile()
+    appointment = Appointment.query.get(appointment_id)
+
+    if not appointment or appointment.doctor_id != doctor.id:
+        return "Appointment Not Found"
+
+    status = request.form.get("status", "")
+    if status not in {"Completed", "Cancelled"}:
+        flash("Invalid appointment status.", "error")
 
 
 
 
 
-# helper functions
+
+# =================================Helper Functions========================================
 def current_user():
     user_id = session.get("user_id")
     if user_id is None:
         return None
     return User.query.get(user_id)
+
+def doctor_profile():
+    user = current_user()
+    if user and user.role == "doctor":
+        return DoctorProfile.query.filter_by(user_id=user.id).first()
+    return None
+
+def patient_profile():
+    user = current_user()
+    if user and user.role == "patient":
+        return PatientProfile.query.filter_by(user_id=user.id).first()
+    return None
 
 
 

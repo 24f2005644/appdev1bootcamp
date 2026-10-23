@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Patient Search</h1>
+    <form method="get">
+        <input type="search" name="q" placeholder="Search by name, email, or phone" value="{{ search_query }}">
+
+        <button type="submit">Search</button>
+    </form>
+    <ul>
+        {% for patient in patients %}
+            <li>
+                {{ patient.user.name }} - {{ patient.user.email }} - {{ patient.phone }} - {{"Active" if patient.user.is_active else "Inactive"}}
+            </li>
+        {% else %}
+            <li>No matching patients.</li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a></p>
+
+
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1> Doctor Dashboard</h1>
+    <p>Welcome, Dr. {{ doctor.user.name }}</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <p class="alert alert-{{ category }}">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+
+    <p><a href="{{ url_for('manage_availability') }}">Provide Availibility</a></p>
+
+    <h2>Appointments</h2>
+    <table>
+        <tr><th>Patient Name</th>  <th>Date</th> <th>Time</th> <th>Status</th> <th>Actions</th></tr>
+        {% for appointment in appointments %}
+        <tr>
+            <td>{{appointment.patient.user.name}}</td>
+            <td>{{appointment.date}}</td>
+            <td>{{appointment.time}}</td>
+            <td>{{appointment.status}}</td>
+            <td>
+                <form class="inline" method="post" action="{{ url_for('update_appointment_status', appointment_id=appointment.id) }}">
+
+                    <button type="submit" name="status" value="Completed">Complete</button>
+                    <button type="submit" name="status" value="Cancelled">Cancel</button>
+                </form>
+                <a href="{{ url_for('add_treatment', appointment_id=appointment.id) }}">Treatment</a>
+                <a href="{{ url_for('patient_history', appointment_id=appointment.id) }}">History</a>
+
+            </td>
+        </tr>
+        {% else %}
+            <tr><td colspan="4">No appointments found.</td></tr>
+        {% endfor %}
+    </table>
+
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+
+</body>
+</html>
