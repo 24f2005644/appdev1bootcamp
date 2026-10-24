@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1> Update Patient Profile </h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <p class="alert alert-{{ category }}">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+
+    <form method="post">
+        <label>Name
+            <input type="text" name="name" value="{{ patient.user.name }}" required>
+        </label>
+        <label>Email
+            <input type="email" name="email" value="{{ patient.user.email }}" required>
+        </label>
+        <label>Password
+            <input type="password" name="password" placeholder="Enter new password" required>
+
+        </label>
+
+        <label>Date of Birth
+            <input type="date" name="dob" value="{{ patient.date_of_birth }}">
+        </label>
+
+        <label>Gender
+            <select name="gender">
+                <option value="Male" {% if patient.gender == 'Male' %}selected{% endif %}>Male</option>
+                <option value="Female" {% if patient.gender == 'Female' %}selected{% endif %}>Female</option>
+                <option value="Other" {% if patient.gender == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+        </label>
+        <label>Phone
+            <input type="text" name="phone" value="{{ patient.phone }}">
+        </label>
+        <label>Address
+            <input type="text" name="address" value="{{ patient.address }}" >
+        </label>
+        <button type="submit">Save Profile</button>
+    </form>
+    <p><a href="{{ url_for('patient_dashboard') }}">Back to Dashboard</a></p>
+</body>
+</html>

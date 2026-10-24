@@ -33,7 +33,7 @@
                     <button type="submit" name="status" value="Cancelled">Cancel</button>
                 </form>
                 <a href="{{ url_for('add_treatment', appointment_id=appointment.id) }}">Treatment</a>
-                <a href="{{ url_for('patient_history', appointment_id=appointment.id) }}">History</a>
+                <a href="{{ url_for('patient_history', patient_id=appointment.patient_id) }}">History</a>
 
             </td>
         </tr>

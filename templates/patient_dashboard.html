@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Parient Dashboard</h1>
+    <p>Welcome, {{patient.user.name}}.</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <p class="alert alert-{{ category }}">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+
+    <p>
+        <a href="{{ url_for('patient_profile_view') }}">Update Profile</a> |
+        <a href="{{ url_for('search_doctors') }}">Find a doctor</a> |
+    </p>
+    <h2>Upcoming Appointments</h2>
+    {% for appointment in upcoming %}
+    <article>
+        <p> {{ appointment.appointment_date }} at {{ appointment.appointment_time }}</p>
+        <p>Doctor: {{ appointment.doctor.user.name }} ({{ appointment.doctor.specialization }})</p>
+        <p>Status: {{ appointment.status }}</p>
+        <a href="{{ url_for('reschedule_appointment', appointment_id=appointment.id) }}">Reschedule</a>
+        <form class="inline" method="post" action="{{ url_for('cancel_appointment', appointment_id=appointment.id) }}">
+            <button type="submit">Cancel</button>
+        </form>
+    </article>
+    {% else %}
+        <p>No upcoming appointments.</p>
+    {% endfor %}
+
+    <h2>Appointment History</h2>
+    {% for appointment in history %}
+    <article>
+        <p> {{ appointment.appointment_date }} at {{ appointment.appointment_time }}</p>
+        <p>Doctor: {{ appointment.doctor.user.name }}</p>
+        <p>Status: {{ appointment.status }}</p>
+        {% if appointment.treatment %}
+            <h3>Treatment Details</h3>
+            <p>Diagnosis: {{ appointment.treatment.diagnosis }}</p>
+            <p>Treatment Notes: {{ appointment.treatment.treatment_notes }}</p>
+            <p>Prescription: {{ appointment.treatment.prescription }}</p>
+        {% else %}
+            <p>No treatment details available.</p>
+        {% endif %}
+    </article>
+    {% else %}
+        <p>No past appointments.</p>
+    {% endfor %}
+
+
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

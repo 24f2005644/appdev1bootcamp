@@ -415,6 +415,91 @@ def manage_availability():
     return render_template("availability.html", availabilities=doctor.availability)
 
 
+# =================================Patient routes========================================
+
+@app.route("/patient/dashboard")
+@role_required("patient")
+def patient_dashboard():
+    patient = patient_profile()
+    today = date.today()
+
+    upcoming = Appointment.query.filter_by(patient_id=patient.id, Appointment.appointment_date >= today).all()
+
+    history = Appointment.query.filter_by(patient_id=patient.id).filter(db.or_(Appointment.appointment_date < today, Appointment.status.in_(["Completed", "Cancelled"]) )).all()
+
+
+    return render_template("patient_dashboard.html", patient=patient, upcoming=upcoming, history=history)
+
+
+
+@app.route("/patient/profile", methods=["GET", "POST"])
+@role_required("patient")
+def patient_profile_view():
+    patient = patient_profile()
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
+        date_of_birth = request.form.get("date_of_birth", "").strip()
+        gender = request.form.get("gender", "").strip()
+        phone = request.form.get("phone", "").strip()
+        address = request.form.get("address", "").strip()
+
+        if not all([name, email, password]):
+            flash("All fields are required.", "error")
+            return render_template("patient_profile.html", patient=patient)
+
+        other_user = User.query.filter_by(email=email).first()
+
+        if other_user and other_user.id != patient.user_id:
+            flash("An account with this email already exists.", "error")
+            return render_template("patient_profile.html", patient=patient)
+
+        patient.user.name = name
+        patient.user.email = email
+        patient.user.password_hash = generate_password_hash(password)
+        patient.date_of_birth = date_of_birth
+        patient.gender = gender
+        patient.phone = phone
+        patient.address = address
+
+        db.session.commit()
+        flash("Profile updated successfully.", "success")
+        return redirect(url_for("patient_dashboard"))
+
+    return render_template("patient_profile.html", patient=patient)
+
+@app.route("/patient/doctors")
+@role_required("patient")
+def search_doctors():
+    doctors = DoctorProfile.query.all()
+    query = request.args.get("q", "").strip()
+
+    combined = (
+        DoctorProfile.query
+        .join(DoctorProfile.user)
+        .join(DoctorProfile.department)
+        .filter(User.is_active.is_(True))
+    )
+
+    if query:
+        pattern = f"%{query}%"
+        combined = combined.filter(
+            db.or_(
+                User.name.ilike(pattern),
+                DoctorProfile.specialization.ilike(pattern),
+                Department.name.ilike(pattern)
+            )
+        )
+
+    doctors = combined.all()
+
+
+
+
+    return render_template("view_doctors.html", doctors=doctors , query=query)
+
+
 
 
 
