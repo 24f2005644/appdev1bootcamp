@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1> Patient History: {{patient.user.name }}</h1>
+    {% for appointment in appointments %}
+    <article>
+        <h2>{{ appointment.appointment_date }} {{ appointment.appointment_time }}</h2>
+        <p>Doctor: {{ appointment.doctor.user.name }}</p>
+        <p>Status: {{ appointment.status }}</p>
+        {% if appointment.treatment %}
+            <h3>Treatment Details</h3>
+            <p>Diagnosis: {{ appointment.treatment.diagnosis }}</p>
+            <p>Treatment Notes: {{ appointment.treatment.treatment_notes }}</p>
+            <p>Prescription: {{ appointment.treatment.prescription }}</p>
+        {% else %}
+            <p>No treatment details available.</p>
+        {% endif %}
+    </article>
+    {% else %}
+        <p>No appointments found for this patient.</p>
+    {% endfor %}
+    <p><a href="{{ url_for('doctor_dashboard') }}">Back to Dashboard</a></p>
+</body>
+</html>

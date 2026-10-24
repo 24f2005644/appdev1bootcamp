@@ -5,6 +5,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from functools import wraps
 
+from datetime import datetime, date, time, timedelta
+
 app = Flask(__name__)
 
 
@@ -306,6 +308,118 @@ def update_appointment_status(appointment_id):
     status = request.form.get("status", "")
     if status not in {"Completed", "Cancelled"}:
         flash("Invalid appointment status.", "error")
+        return redirect(url_for("doctor_dashboard"))
+    appointment.status = status
+    db.session.commit()
+    flash("Appointment status updated successfully.", "success")
+    return redirect(url_for("doctor_dashboard"))
+
+@app.route("/doctor/appointments/<int:appointment_id>/treatment", methods=["GET", "POST"])
+@role_required("doctor")
+def add_treatment(appointment_id):
+    doctor = doctor_profile()
+    appointment = Appointment.query.get(appointment_id)
+
+    if not appointment or appointment.doctor_id != doctor.id:
+        return "Appointment Not Found"
+
+    if request.method == "POST":
+        diagnosis = request.form.get("diagnosis", "").strip()
+        treatment_notes = request.form.get("treatment_notes", "").strip()
+        prescription = request.form.get("prescription", "").strip()
+
+        if not diagnosis or not treatment_notes:
+            flash("Diagnosis and treatment notes are required.", "error")
+            return render_template("treatment_form.html", appointment=appointment)
+
+        treatment = Treatment(
+            appointment_id=appointment.id,
+            diagnosis=diagnosis,
+            treatment_notes=treatment_notes,
+            prescription=prescription
+        )
+        db.session.add(treatment)
+        db.session.commit()
+        flash("Treatment details added successfully.", "success")
+        return redirect(url_for("doctor_dashboard"))
+
+    return render_template("treatment_form.html", appointment=appointment)
+
+
+@app.route("/doctor/patients/<int:patient_id>/history", methods=["GET", "POST"])
+@role_required("doctor")
+def patient_history(patient_id):
+    doctor = doctor_profile()
+    patient = PatientProfile.query.get(patient_id)
+
+    if not patient:
+        return "Patient Not Found"
+
+    appointments = Appointment.query.filter_by(doctor_id=doctor.id, patient_id=patient.id).all()
+
+    return render_template("patient_history.html", patient=patient, appointments=appointments)
+
+
+@app.route("/doctor/availability", methods=["GET", "POST"])
+@role_required("doctor")
+def manage_availability():
+    doctor = doctor_profile()
+
+    if request.method == "POST":
+        available_date = request.form.get("available_date")
+        start_time = request.form.get("start_time")
+        end_time = request.form.get("end_time")
+
+        if not all([available_date, start_time, end_time]):
+            flash("All fields are required.", "error")
+            return redirect(url_for("manage_availability"))
+
+        try:
+            selected_date = date.fromisoformat(available_date)
+            start_time = time.fromisoformat(start_time)
+            end_time = time.fromisoformat(end_time)
+        except ValueError:
+            selected_date = None
+        today = date.today()
+
+        if (
+            selected_date is None
+            or selected_date < today
+            or selected_date > today + timedelta(days=6)
+            or start_time >= end_time
+        ):
+            flash("Invalid date or time. Please ensure the date is within the next 7 days and the start time is before the end time.", "error")
+            return redirect(url_for("manage_availability"))
+
+        duplicate_availability = DoctorAvailability.query.filter_by(
+            doctor_id=doctor.id,
+            available_date=selected_date,
+            start_time=start_time,
+            end_time=end_time
+        ).first()
+
+        if duplicate_availability:
+            flash("This availability slot already exists.", "error")
+            return redirect(url_for("manage_availability"))
+
+        doctor_availability = DoctorAvailability(
+            doctor_id=doctor.id,
+            available_date=selected_date,
+            start_time=start_time,
+            end_time=end_time
+        )
+        db.session.add(doctor_availability)
+        db.session.commit()
+        flash("Availability added successfully.", "success")
+        return redirect(url_for("manage_availability"))
+    return render_template("availability.html", availabilities=doctor.availability)
+
+
+
+
+
+
+
 
 
 
