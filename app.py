@@ -207,8 +207,10 @@ def edit_doctor(doctor_id):
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
         specialization = request.form.get("specialization", "").strip()
-        department_id = request.form.get("department", type=int)
+        department_id = request.form.get("department_id", type=int)
         password = request.form.get("password", "").strip()
+
+
 
         other_user = User.query.filter_by(email = email).first()
 
@@ -423,7 +425,7 @@ def patient_dashboard():
     patient = patient_profile()
     today = date.today()
 
-    upcoming = Appointment.query.filter_by(patient_id=patient.id, Appointment.appointment_date >= today).all()
+    upcoming = Appointment.query.filter_by(patient_id=patient.id, status="Booked").filter(Appointment.appointment_date >= today).all()
 
     history = Appointment.query.filter_by(patient_id=patient.id).filter(db.or_(Appointment.appointment_date < today, Appointment.status.in_(["Completed", "Cancelled"]) )).all()
 
@@ -445,6 +447,13 @@ def patient_profile_view():
         phone = request.form.get("phone", "").strip()
         address = request.form.get("address", "").strip()
 
+
+        try:
+
+            date_of_birth = date.fromisoformat(date_of_birth)
+        except ValueError:
+            date_of_birth = None
+
         if not all([name, email, password]):
             flash("All fields are required.", "error")
             return render_template("patient_profile.html", patient=patient)
@@ -455,10 +464,14 @@ def patient_profile_view():
             flash("An account with this email already exists.", "error")
             return render_template("patient_profile.html", patient=patient)
 
+
+
         patient.user.name = name
         patient.user.email = email
         patient.user.password_hash = generate_password_hash(password)
+
         patient.date_of_birth = date_of_birth
+
         patient.gender = gender
         patient.phone = phone
         patient.address = address
@@ -474,6 +487,7 @@ def patient_profile_view():
 def search_doctors():
     doctors = DoctorProfile.query.all()
     query = request.args.get("q", "").strip()
+      # Debugging line to print the search query
 
     combined = (
         DoctorProfile.query
@@ -491,13 +505,183 @@ def search_doctors():
                 Department.name.ilike(pattern)
             )
         )
+        doctors = combined.all()
 
-    doctors = combined.all()
+
 
 
 
 
     return render_template("view_doctors.html", doctors=doctors , query=query)
+
+@app.route("/patient/doctors/<int:doctor_id>/availability", methods=["GET", "POST"])
+@role_required("patient")
+def doctor_availability(doctor_id):
+    doctor = DoctorProfile.query.get(doctor_id)
+
+    if not doctor or not doctor.user.is_active:
+        return "Doctor Not Found"
+
+    today = date.today()
+
+    availability = DoctorAvailability.query.filter_by(doctor_id=doctor.id).filter(DoctorAvailability.available_date >= today).all()
+
+
+    return render_template("doctor_availability.html", doctor=doctor, availability=availability)
+
+
+@app.route("/patient/appointments/book", methods=["GET", "POST"])
+@role_required("patient")
+def book_appointment():
+    patient = patient_profile()
+
+    if request.method == "POST":
+        doctor_id = request.form.get("doctor_id", type=int)
+        available_date = request.form.get("appointment_date", "")
+        appointment_time = request.form.get("appointment_time", "")
+        reason = request.form.get("reason", "").strip()
+        doctor = DoctorProfile.query.get(doctor_id)
+
+        print(f"Booking appointment for doctor_id: {doctor_id}, available_date: {available_date}, appointment_time: {appointment_time}, reason: {reason}")
+        try:
+            selected_date = date.fromisoformat(available_date)
+            selected_time = time.fromisoformat(appointment_time)
+
+        except ValueError:
+            selected_date = None
+            selected_time = None
+
+
+        slot = DoctorAvailability.query.filter_by(
+            doctor_id=doctor_id,
+            available_date=selected_date,
+            start_time=selected_time
+        ).first()
+
+
+
+        if (
+            not doctor
+            or not slot
+            or selected_date is None
+            or selected_time is None
+        ):
+            flash("Invalid appointment details.", "error")
+            return redirect(url_for("search_doctors"))
+
+        existing_appointment = Appointment.query.filter_by(
+            patient_id=patient.id,
+            appointment_date=selected_date,
+            appointment_time=selected_time,
+            status="Booked"
+        ).first()
+
+        if existing_appointment:
+            flash("You already have an appointment at this time.", "error")
+            return redirect(url_for("patient_dashboard"))
+
+        appointment = Appointment(
+            doctor_id=doctor.id,
+            patient_id=patient.id,
+            appointment_date=selected_date,
+            appointment_time=selected_time,
+            status="Booked",
+            reason=reason
+        )
+
+        db.session.add(appointment)
+       
+        db.session.commit()
+
+        flash("Appointment booked successfully.", "success")
+    return redirect(url_for("patient_dashboard"))
+
+
+@app.route("/patient/appointments/<int:appointment_id>/reschedule", methods=["GET","POST"])
+@role_required("patient")
+def reschedule_appointment(appointment_id):
+    patient = patient_profile()
+    appointment = Appointment.query.get(appointment_id)
+
+    if not appointment or appointment.patient_id != patient.id:
+        return "Appointment Not Found"
+
+    if appointment.status != "Booked":
+        flash("Only booked appointments can be rescheduled.", "error")
+        return redirect(url_for("patient_dashboard"))
+
+    if request.method == "POST":
+        new_date = request.form.get("new_date", "")
+        new_time = request.form.get("new_time", "")
+
+        try:
+            selected_date = date.fromisoformat(new_date)
+            selected_time = time.fromisoformat(new_time)
+        except ValueError:
+            flash("Invalid date or time format.", "error")
+            return redirect(url_for("reschedule_appointment", appointment_id=appointment.id))
+
+        slot = DoctorAvailability.query.filter_by(
+            doctor_id=appointment.doctor_id,
+            available_date=selected_date,
+            start_time=selected_time
+        ).first()
+
+        if not slot:
+            flash("Selected time slot is not available.", "error")
+            return redirect(url_for("reschedule_appointment", appointment_id=appointment.id))
+
+        existing_appointment = Appointment.query.filter_by(
+            patient_id=patient.id,
+            appointment_date=selected_date,
+            appointment_time=selected_time,
+            status="Booked"
+        ).first()
+
+        if existing_appointment:
+            flash("You already have an appointment at this time.", "error")
+            return redirect(url_for("reschedule_appointment", appointment_id=appointment.id))
+
+        appointment.appointment_date = selected_date
+        appointment.appointment_time = selected_time
+        db.session.commit()
+
+        flash("Appointment rescheduled successfully.", "success")
+        return redirect(url_for("patient_dashboard"))
+    return render_template("reschedule.html", appointment=appointment)
+
+
+
+@app.route("/patient/appointments/<int:appointment_id>/cancel")
+@role_required("patient")
+def cancel_appointment(appointment_id):
+    patient = patient_profile()
+    appointment = Appointment.query.get(appointment_id)
+
+    if not appointment or appointment.patient_id != patient.id:
+        return "Appointment Not Found"
+
+    if appointment.status != "Booked":
+        flash("Only booked appointments can be canceled.", "error")
+        return redirect(url_for("patient_dashboard"))
+
+    appointment.status = "Cancelled"
+    db.session.commit()
+
+    flash("Appointment canceled successfully.", "success")
+    return redirect(url_for("patient_dashboard"))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

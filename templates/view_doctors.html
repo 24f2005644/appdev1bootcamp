@@ -7,10 +7,12 @@
 </head>
 <body>
     <h1> Available Doctors</h1>
-    <from method="get">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search by name or specialization">
+    <form method="get"">
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by name or specialization">
         <button type="submit">Search</button>
-    </from>
+    </form>
+
+
 
     {% for doctor in doctors %}
         <div>
