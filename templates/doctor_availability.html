@@ -18,7 +18,7 @@
             <input type="hidden" name="doctor_id" value="{{ doctor.id }}">
             <input type="hidden" name="appointment_date" value="{{ slot.available_date }}">
             <input type="hidden" name="appointment_time" value="{{ slot.start_time }}">
-            <p>{{ slot.date }} - {{ slot.start_time }} to {{ slot.end_time }}</p>
+            <p>{{ slot.available_date }} - {{ slot.start_time }} to {{ slot.end_time }}</p>
             <input type="text" name="reason" placeholder="Reason for appointment">
             <button type="submit">Book</button>
         </form>

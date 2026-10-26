@@ -308,9 +308,15 @@ def update_appointment_status(appointment_id):
         return "Appointment Not Found"
 
     status = request.form.get("status", "")
+
     if status not in {"Completed", "Cancelled"}:
         flash("Invalid appointment status.", "error")
         return redirect(url_for("doctor_dashboard"))
+
+    if appointment.status != "Booked":
+        flash("Only booked appointments can be updated.", "error")
+        return redirect(url_for("doctor_dashboard"))
+
     appointment.status = status
     db.session.commit()
     flash("Appointment status updated successfully.", "success")
@@ -334,15 +340,31 @@ def add_treatment(appointment_id):
             flash("Diagnosis and treatment notes are required.", "error")
             return render_template("treatment_form.html", appointment=appointment)
 
+        if appointment.status in {"Cancelled", "Completed"}:
+            flash("Cannot add treatment to a cancelled or completed appointment.", "error")
+            return redirect(url_for("doctor_dashboard"))
+
+        existing_treatment = Treatment.query.filter_by(appointment_id=appointment.id).first()
+        if existing_treatment:
+            existing_treatment.diagnosis = diagnosis
+            existing_treatment.treatment_notes = treatment_notes
+            existing_treatment.prescription = prescription
+            db.session.commit()
+
+
+
         treatment = Treatment(
-            appointment_id=appointment.id,
-            diagnosis=diagnosis,
-            treatment_notes=treatment_notes,
-            prescription=prescription
-        )
+                    appointment_id=appointment.id,
+                    diagnosis=diagnosis,
+                    treatment_notes=treatment_notes,
+                    prescription=prescription
+                )
         db.session.add(treatment)
         db.session.commit()
         flash("Treatment details added successfully.", "success")
+
+
+
         return redirect(url_for("doctor_dashboard"))
 
     return render_template("treatment_form.html", appointment=appointment)
@@ -590,7 +612,7 @@ def book_appointment():
         )
 
         db.session.add(appointment)
-       
+
         db.session.commit()
 
         flash("Appointment booked successfully.", "success")
@@ -611,8 +633,10 @@ def reschedule_appointment(appointment_id):
         return redirect(url_for("patient_dashboard"))
 
     if request.method == "POST":
-        new_date = request.form.get("new_date", "")
-        new_time = request.form.get("new_time", "")
+        new_date = request.form.get("appointment_date", "")
+        new_time = request.form.get("appointment_time", "")
+
+        print(f"new_date: {new_date}, new_time: {new_time}")
 
         try:
             selected_date = date.fromisoformat(new_date)
@@ -621,11 +645,12 @@ def reschedule_appointment(appointment_id):
             flash("Invalid date or time format.", "error")
             return redirect(url_for("reschedule_appointment", appointment_id=appointment.id))
 
-        slot = DoctorAvailability.query.filter_by(
-            doctor_id=appointment.doctor_id,
-            available_date=selected_date,
-            start_time=selected_time
-        ).first()
+        slot = DoctorAvailability.query.filter(
+            DoctorAvailability.doctor_id == appointment.doctor_id,
+            DoctorAvailability.available_date == selected_date,
+            DoctorAvailability.start_time <= selected_time,
+            DoctorAvailability.end_time > selected_time
+        )
 
         if not slot:
             flash("Selected time slot is not available.", "error")
@@ -652,7 +677,7 @@ def reschedule_appointment(appointment_id):
 
 
 
-@app.route("/patient/appointments/<int:appointment_id>/cancel")
+@app.route("/patient/appointments/<int:appointment_id>/cancel", methods=["GET","POST"])
 @role_required("patient")
 def cancel_appointment(appointment_id):
     patient = patient_profile()
