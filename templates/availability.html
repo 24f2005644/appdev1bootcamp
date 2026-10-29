@@ -3,39 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Manage Availability</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <h1> Provide Availability for the next 7 days</h1>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="card-soft">
+            <div class="page-header px-4 py-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <h2 class="mb-0">Provide Availability for the next 7 days</h2>
+                    <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-light">Back to Dashboard</a>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <p class="alert alert-{{ category }}">{{ message }}</p>
-        {% endfor %}
-    {% endwith %}
+                <form method="post" class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label for="available_date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="available_date" name="available_date" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="start_time" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="end_time" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" required>
+                    </div>
+                    <div class="col-12 d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Save Availability</button>
+                    </div>
+                </form>
 
-    <form method="post">
-        <label>Date
-            <input type="date" name="available_date" required>
-        </label>
-        <label>Start Time
-            <input type="time" name="start_time" required>
-        </label>
-        <label>End Time
-            <input type="time" name="end_time" required>
-        </label>
-        <button type="submit">Save Availability</button>
-    </form>
+                <div class="list-group">
+                    {% for availability in availabilities %}
+                        <div class="list-group-item">
+                            <strong>{{ availability.available_date }}</strong>: {{ availability.start_time }} - {{ availability.end_time }}
+                        </div>
+                    {% else %}
+                        <div class="list-group-item text-muted">No availability provided yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <ul>
-        {% for availability in availabilities %}
-            <li>{{ availability.available_date }}: {{ availability.start_time }} - {{ availability.end_time }}</li>
-        {% else %}
-            <li>No availability provided yet.</li>
-        {% endfor %}
-    </ul>
-
-
-    <a href="{{ url_for('doctor_dashboard') }}">Back to Dashboard</a>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

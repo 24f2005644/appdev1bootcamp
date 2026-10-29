@@ -7,11 +7,18 @@ from functools import wraps
 
 from datetime import datetime, date, time, timedelta
 
+
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 app = Flask(__name__)
 
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///hospital.db"
-app.config["SECRET_KEY"] = "+WdmukgUu)fhyXAw"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI", 'sqlite:///hospital.db')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default_secret_key")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
@@ -52,6 +59,8 @@ def register():
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
+
+        print(f"Received registration data: name={name}, email={email}, password={'*' * len(password)}")  # Debugging line
 
         if not name or not email or not password:
             flash("Name, email and password are required", "error")
